@@ -3,6 +3,8 @@ package com.university.edtech.controller;
 import com.university.edtech.dto.SkillRequestDto;
 import com.university.edtech.dto.StudentRequestDto;
 import com.university.edtech.dto.StudentResponseDto;
+import com.university.edtech.model.Student;
+import com.university.edtech.repository.StudentRepository;
 import com.university.edtech.service.StudentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,14 +21,17 @@ public class StudentController {
 
     private final StudentService studentService;
 
+    private final StudentRepository studentRepository;
     @PostMapping
     public ResponseEntity<StudentResponseDto> createStudent(@RequestBody StudentRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(studentService.createStudent(dto));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<StudentResponseDto> getStudent(@PathVariable Long id) {
-        return ResponseEntity.ok(studentService.getStudentById(id));
+    public ResponseEntity<Student> getStudentProfile(@PathVariable Long id) {
+        return studentRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")

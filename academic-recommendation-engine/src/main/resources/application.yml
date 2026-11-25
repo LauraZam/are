@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/edtech_db
     username: postgres
-    password: ShuMika
+    ${DB_PASSWORD: ShuMika}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -20,6 +20,21 @@ spring:
   sql:
     init:
       mode: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http:
+          server:
+            requests: true
 
 server:
   port: 8080

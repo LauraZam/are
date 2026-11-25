@@ -6,7 +6,10 @@ import com.university.edtech.model.Enrollment;
 import com.university.edtech.model.Student;
 import com.university.edtech.repository.CourseRepository;
 import com.university.edtech.repository.StudentRepository;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,14 +19,36 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class RecommendationService {
 
     private final StudentRepository studentRepository;
     private final CourseRepository courseRepository;
+    private final Counter recommendationRequestsCounter;
+    private final Timer recommendationLatencyTimer;
+
+    @Autowired
+    public RecommendationService(
+            StudentRepository studentRepository,
+            CourseRepository courseRepository,
+            MeterRegistry meterRegistry
+    ) {
+        this.studentRepository = studentRepository;
+        this.courseRepository = courseRepository;
+        this.recommendationRequestsCounter = Counter.builder("recommendations.requests.total")
+                .description("Total number of recommendation requests")
+                .register(meterRegistry);
+        this.recommendationLatencyTimer = Timer.builder("recommendations.calculation.duration")
+                .description("Duration of recommendation calculation")
+                .register(meterRegistry);
+    }
 
     @Transactional(readOnly = true)
     public List<CourseRecommendationDto> getRecommendations(Long studentId) {
+        recommendationRequestsCounter.increment();
+        return recommendationLatencyTimer.record(() -> computeRecommendations(studentId));
+    }
+
+    private List<CourseRecommendationDto> computeRecommendations(Long studentId) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
 
@@ -84,8 +109,8 @@ public class RecommendationService {
                     baseScore
             ));
         }
-        recommendations.sort((a, b) -> Double.compare(b.matchScore(), a.matchScore()));
 
+        recommendations.sort((a, b) -> Double.compare(b.matchScore(), a.matchScore()));
         return recommendations;
     }
 }
